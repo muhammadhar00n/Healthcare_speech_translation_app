@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Healthcare Translation App</title>
+</head>
+<body>
+  <h1>Healthcare Translation App</h1>
+
+  <!-- Audio file upload for transcription -->
+  <input type="file" id="audioInput" accept="audio/*">
+  <button onclick="uploadAudio()">Transcribe</button>
+  <p id="transcript"></p>
+
+  <!-- Language selection and translation -->
+  <label for="targetLang">Target Language:</label>
+  <select id="targetLang">
+    <option value="es">Spanish</option>
+    <option value="fr">French</option>
+    <option value="de">German</option>
+    <!-- Add more languages as needed -->
+  </select>
+  <button onclick="translateText()">Translate</button>
+  <p id="translatedText"></p>
+
+  <!-- Text-to-speech audio playback -->
+  <button onclick="playAudio()">Speak</button>
+  <audio id="audioPlayer" controls></audio>
+
+  <script>
+    // Function to handle audio file upload and transcription
+    async function uploadAudio() {
+      const input = document.getElementById('audioInput');
+      const file = input.files[0];
+      if (!file) {
+        alert("Please select an audio file first!");
+        return;
+      }
+      const formData = new FormData();
+      formData.append('audio', file);
+
+      try {
+        const response = await fetch('/transcribe', { method: 'POST', body: formData });
+        const data = await response.json();
+        document.getElementById('transcript').innerText = data.transcript || data.error;
+      } catch (e) {
+        console.error(e);
+        alert("Error transcribing audio.");
+      }
+    }
+
+    // Function to handle text translation
+    async function translateText() {
+      const transcript = document.getElementById('transcript').innerText;
+      if (!transcript.trim()) {
+        alert("No transcript available for translation!");
+        return;
+      }
+      const targetLang = document.getElementById('targetLang').value;
+
+      try {
+        const response = await fetch('/translate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: transcript, target_lang: targetLang })
+        });
+        const data = await response.json();
+        document.getElementById('translatedText').innerText = data.translated_text || data.error;
+      } catch (e) {
+        console.error(e);
+        alert("Error translating text.");
+      }
+    }
+
+    // Function to handle text-to-speech audio playback
+    async function playAudio() {
+      const translatedText = document.getElementById('translatedText').innerText;
+      if (!translatedText.trim()) {
+        alert("No translated text available to speak.");
+        return;
+      }
+      const targetLang = document.getElementById('targetLang').value;
+
+      try {
+        const response = await fetch('/speak', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: translatedText, lang: targetLang })
+        });
+        if (response.ok) {
+          const blob = await response.blob();
+          const url = URL.createObjectURL(blob);
+          document.getElementById('audioPlayer').src = url;
+        } else {
+          const data = await response.json();
+          alert("Error: " + (data.error || "Unknown error"));
+        }
+      } catch (e) {
+        console.error(e);
+        alert("Error in text-to-speech.");
+      }
+    }
+  </script>
+</body>
+</html>
